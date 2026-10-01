@@ -1,0 +1,50 @@
+# .github/workflows/deploy-bot.yml  (BOT repo: bot.py root papkada)
+# main ga push qilinganda bot.py ni VPS ga yuborib, servisni qayta ishga tushiradi
+name: Deploy bot
+ 
+on:
+  push:
+    branches: [main]
+    paths: ["bot.py", "requirements.txt", ".github/workflows/deploy-bot.yml"]
+  workflow_dispatch:
+ 
+concurrency:
+  group: deploy-bot
+  cancel-in-progress: false
+ 
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - name: Syntax tekshiruvi
+        run: python -m py_compile bot.py
+ 
+      - name: SSH sozlash
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+ 
+      - name: Fayllarni yuborish
+        run: |
+          FILES="bot.py"
+          [ -f requirements.txt ] && FILES="$FILES requirements.txt"
+          scp -P "${{ secrets.SSH_PORT || 22 }}" $FILES \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.APP_DIR || '/opt/solostars-bot' }}/"
+ 
+      - name: Qayta ishga tushirish
+        run: |
+          ssh -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'REMOTE'
+            set -e
+            cd "${{ secrets.APP_DIR || '/opt/solostars-bot' }}"
+            [ -d venv ] || python3 -m venv venv
+            ./venv/bin/pip install -q --upgrade pip
+            if [ -f requirements.txt ]; then ./venv/bin/pip install -q -r requirements.txt;
+            else ./venv/bin/pip install -q "aiogram>=3.13" aiohttp aiosqlite; fi
+            sudo systemctl restart solostars-bot
+            sleep 3
+            systemctl is-active solostars-bot
+          REMOTE
