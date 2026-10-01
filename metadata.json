@@ -1,0 +1,6 @@
+{
+  "name": "SOLO STARS",
+  "description": "Telegram Stars, Telegram Premium (1 oylik 48.100 so'm admin bilan) va PUBG Mobile UC rasmiy tezkor xarid do'koni.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
